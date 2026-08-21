@@ -10,6 +10,10 @@ on:
       - main
 
 jobs:
+
+  # ==============================
+  # CI: Build, Test & Security Scan
+  # ==============================
   build-test:
     name: Build, Test and Security Scan
     runs-on: ubuntu-latest
@@ -29,6 +33,7 @@ jobs:
           --health-retries=10
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -76,3 +81,46 @@ jobs:
           docker tag guddu3447/finlyt:${{ github.sha }} guddu3447/finlyt:latest
           docker push guddu3447/finlyt:${{ github.sha }}
           docker push guddu3447/finlyt:latest
+
+
+  # ==============================
+  # CD: Deploy to Kubernetes
+  # ==============================
+  deploy:
+    name: Deploy to Kubernetes
+    needs: build-test
+    runs-on: [self-hosted, Windows, X64]
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Kubernetes
+        shell: powershell
+        run: |
+          kubectl version --client
+          kubectl get nodes
+
+      - name: Check Helm
+        shell: powershell
+        run: |
+          helm version
+          helm list
+
+      - name: Deploy with Helm
+        shell: powershell
+        run: |
+          helm upgrade --install finlyt helm
+
+      - name: Wait for Finlyt rollout
+        shell: powershell
+        run: |
+          kubectl rollout status deployment/finlyt --timeout=180s
+
+      - name: Verify deployment
+        shell: powershell
+        run: |
+          kubectl get pods
+          kubectl get svc
+          kubectl get hpa
