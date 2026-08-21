@@ -91,6 +91,9 @@ jobs:
     needs: build-test
     runs-on: [self-hosted, Windows, X64]
 
+    env:
+      KUBECONFIG: C:\actions-runner\kubeconfig
+
     steps:
 
       - name: Checkout code
@@ -99,7 +102,7 @@ jobs:
       - name: Check Kubernetes
         shell: powershell
         run: |
-          kubectl version --client
+          kubectl config current-context
           kubectl get nodes
 
       - name: Check Helm
