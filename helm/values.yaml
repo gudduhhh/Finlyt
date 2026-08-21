@@ -1,0 +1,33 @@
+replicaCount: 2
+
+image:
+  repository: guddu3447/finlyt
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: NodePort
+  port: 8080
+  targetPort: 8080
+  nodePort: 30080
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+mysql:
+  image: mysql:8.0
+  database: bankappdb
+  port: 3306
+
+hpa:
+  minReplicas: 2
+  maxReplicas: 5
+  cpuTarget: 70
+
+ollama:
+  url: http://host.docker.internal:11434

@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finlyt
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: finlyt
+  template:
+    metadata:
+      labels:
+        app: finlyt
+    spec:
+      containers:
+        - name: finlyt
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            - containerPort: 8080
+
+          resources:
+{{ toYaml .Values.resources | nindent 12 }}
+
+          env:
+            - name: MYSQL_HOST
+              value: finlyt-mysql
+
+            - name: MYSQL_PORT
+              value: "{{ .Values.mysql.port }}"
+
+            - name: MYSQL_DATABASE
+              value: "{{ .Values.mysql.database }}"
+
+            - name: MYSQL_USER
+              value: root
+
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: finlyt-secret
+                  key: MYSQL_PASSWORD
+
+            - name: OLLAMA_URL
+              value: "{{ .Values.ollama.url }}"

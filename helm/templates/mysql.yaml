@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finlyt-mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: finlyt-mysql
+  template:
+    metadata:
+      labels:
+        app: finlyt-mysql
+    spec:
+      containers:
+        - name: mysql
+          image: {{ .Values.mysql.image }}
+          ports:
+            - containerPort: 3306
+
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: finlyt-secret
+                  key: MYSQL_ROOT_PASSWORD
+
+            - name: MYSQL_DATABASE
+              value: "{{ .Values.mysql.database }}"
+
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD"
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finlyt-mysql
+spec:
+  selector:
+    app: finlyt-mysql
+  ports:
+    - port: 3306
+      targetPort: 3306

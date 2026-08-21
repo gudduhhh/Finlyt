@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: finlyt
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: finlyt
+
+  template:
+    metadata:
+      labels:
+        app: finlyt
+
+    spec:
+      containers:
+        - name: finlyt
+
+          image: guddu3447/finlyt:latest
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8080
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          env:
+            - name: MYSQL_HOST
+              value: finlyt-mysql
+
+            - name: MYSQL_PORT
+              value: "3306"
+
+            - name: MYSQL_DATABASE
+              value: bankappdb
+
+            - name: MYSQL_USER
+              value: root
+
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: finlyt-secret
+                  key: MYSQL_PASSWORD
+
+            - name: OLLAMA_URL
+              value: http://host.docker.internal:11434
