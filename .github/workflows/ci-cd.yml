@@ -37,15 +37,9 @@ jobs:
 
     steps:
 
-      # -----------------------------------------------------
-      # Checkout
-      # -----------------------------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # -----------------------------------------------------
-      # Java 21
-      # -----------------------------------------------------
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
@@ -53,17 +47,11 @@ jobs:
           java-version: '21'
           cache: maven
 
-      # -----------------------------------------------------
-      # Maven
-      # -----------------------------------------------------
       - name: Set up Maven
         uses: stCarolas/setup-maven@v5
         with:
           maven-version: 3.9.16
 
-      # -----------------------------------------------------
-      # Build and Test
-      # -----------------------------------------------------
       - name: Build and test
         env:
           MYSQL_HOST: 127.0.0.1
@@ -71,19 +59,12 @@ jobs:
           MYSQL_DATABASE: bankappdb
           MYSQL_USER: root
           MYSQL_PASSWORD: Test@123
-
         run: mvn clean verify
 
-      # -----------------------------------------------------
-      # Docker Build
-      # -----------------------------------------------------
       - name: Build Docker image
         run: |
           docker build -t guddu3447/finlyt:${{ github.sha }} .
 
-      # -----------------------------------------------------
-      # Trivy Security Scan
-      # -----------------------------------------------------
       - name: Run Trivy security scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -93,24 +74,16 @@ jobs:
           ignore-unfixed: true
           exit-code: '0'
 
-      # -----------------------------------------------------
-      # Docker Hub Login
-      # -----------------------------------------------------
       - name: Login to Docker Hub
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # -----------------------------------------------------
-      # Push Docker Image
-      # -----------------------------------------------------
       - name: Push Docker image
         run: |
           docker tag guddu3447/finlyt:${{ github.sha }} guddu3447/finlyt:latest
-
           docker push guddu3447/finlyt:${{ github.sha }}
-
           docker push guddu3447/finlyt:latest
 
 
@@ -129,125 +102,253 @@ jobs:
 
     steps:
 
-      # -----------------------------------------------------
-      # Checkout
-      # -----------------------------------------------------
+      # =====================================================
+      # CHECKOUT
+      # =====================================================
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # -----------------------------------------------------
-      # Configure Kubernetes
-      # -----------------------------------------------------
+
+      # =====================================================
+      # CONFIGURE KUBERNETES
+      # =====================================================
       - name: Configure Kubernetes
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
         run: |
-          Write-Host "KUBECONFIG: $env:KUBECONFIG"
+          Write-Host "====================================="
+          Write-Host "KUBERNETES CONFIGURATION"
+          Write-Host "====================================="
 
+          Write-Host ""
+          Write-Host "Kubeconfig:"
+          Write-Host $env:KUBECONFIG
+
+          Write-Host ""
+          Write-Host "Current context:"
           kubectl config current-context
 
+          Write-Host ""
+          Write-Host "Cluster nodes:"
           kubectl get nodes
 
-      # -----------------------------------------------------
-      # Check Kubernetes
-      # -----------------------------------------------------
+
+      # =====================================================
+      # CHECK KUBERNETES
+      # =====================================================
       - name: Check Kubernetes
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
         run: |
-          Write-Host "Checking Kubernetes..."
+          Write-Host "====================================="
+          Write-Host "CHECKING KUBERNETES"
+          Write-Host "====================================="
 
           kubectl version --client
 
+          Write-Host ""
+          Write-Host "Context:"
           kubectl config current-context
 
+          Write-Host ""
+          Write-Host "Nodes:"
           kubectl get nodes
 
+          Write-Host ""
+          Write-Host "Pods:"
           kubectl get pods
 
-      # -----------------------------------------------------
-      # Install Helm
-      # -----------------------------------------------------
-      - name: Set up Helm
-        uses: azure/setup-helm@v5
-        with:
-          version: v3.18.4
 
-      # -----------------------------------------------------
-      # Check Helm
-      # -----------------------------------------------------
+      # =====================================================
+      # INSTALL HELM MANUALLY
+      # =====================================================
+      - name: Install Helm
+        shell: powershell
+        run: |
+
+          $helmVersion = "v3.18.4"
+
+          $helmRoot = "$env:RUNNER_TEMP\helm"
+
+          $zipFile = "$env:RUNNER_TEMP\helm.zip"
+
+          $downloadUrl = "https://get.helm.sh/helm-$helmVersion-windows-amd64.zip"
+
+          Write-Host "====================================="
+          Write-Host "INSTALLING HELM"
+          Write-Host "====================================="
+
+          Write-Host ""
+          Write-Host "Helm version:"
+          Write-Host $helmVersion
+
+          Write-Host ""
+          Write-Host "Download URL:"
+          Write-Host $downloadUrl
+
+          # Remove old files if they exist
+          if (Test-Path $helmRoot) {
+              Remove-Item $helmRoot -Recurse -Force
+          }
+
+          if (Test-Path $zipFile) {
+              Remove-Item $zipFile -Force
+          }
+
+          # Create installation directory
+          New-Item -ItemType Directory -Path $helmRoot -Force | Out-Null
+
+          # Download Helm
+          Write-Host ""
+          Write-Host "Downloading Helm..."
+
+          Invoke-WebRequest `
+            -Uri $downloadUrl `
+            -OutFile $zipFile
+
+          # Verify downloaded file
+          Write-Host ""
+          Write-Host "Downloaded file:"
+          Get-Item $zipFile | Format-List Name,Length,FullName
+
+          # Make sure file is not empty
+          if ((Get-Item $zipFile).Length -lt 1000000) {
+              Write-Error "Helm archive appears to be invalid or too small."
+              exit 1
+          }
+
+          # Extract
+          Write-Host ""
+          Write-Host "Extracting Helm..."
+
+          Expand-Archive `
+            -Path $zipFile `
+            -DestinationPath $helmRoot `
+            -Force
+
+          # Add Helm binary directory to PATH
+          $helmBin = "$helmRoot\windows-amd64"
+
+          Write-Host ""
+          Write-Host "Helm binary directory:"
+          Write-Host $helmBin
+
+          if (-not (Test-Path "$helmBin\helm.exe")) {
+              Write-Error "helm.exe was not found after extraction."
+              exit 1
+          }
+
+          # Add to current job PATH
+          $helmBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+          # Also add to current process
+          $env:Path = "$helmBin;$env:Path"
+
+          Write-Host ""
+          Write-Host "Helm installed successfully."
+
+          helm version
+
+
+      # =====================================================
+      # CHECK HELM
+      # =====================================================
       - name: Check Helm
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
         run: |
-          Write-Host "Checking Helm..."
+
+          Write-Host "====================================="
+          Write-Host "CHECKING HELM"
+          Write-Host "====================================="
 
           helm version
 
+          Write-Host ""
+          Write-Host "Helm lint:"
           helm lint helm
 
+          Write-Host ""
+          Write-Host "Helm template:"
           helm template finlyt helm
 
-      # -----------------------------------------------------
-      # Deploy with Helm
-      # -----------------------------------------------------
+
+      # =====================================================
+      # DEPLOY WITH HELM
+      # =====================================================
       - name: Deploy with Helm
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
         run: |
-          Write-Host "Deploying Finlyt with Helm..."
+
+          Write-Host "====================================="
+          Write-Host "DEPLOYING FINLYT"
+          Write-Host "====================================="
 
           helm upgrade --install finlyt helm `
             --namespace default `
             --create-namespace
 
-      # -----------------------------------------------------
-      # Wait for Finlyt
-      # -----------------------------------------------------
+          Write-Host ""
+          Write-Host "Helm deployment completed."
+
+
+      # =====================================================
+      # WAIT FOR FINLYT
+      # =====================================================
       - name: Wait for Finlyt rollout
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
         run: |
+
+          Write-Host "====================================="
+          Write-Host "WAITING FOR DEPLOYMENT"
+          Write-Host "====================================="
+
           kubectl rollout status deployment/finlyt --timeout=180s
 
           kubectl rollout status deployment/finlyt-mysql --timeout=180s
 
-      # -----------------------------------------------------
-      # Verify Deployment
-      # -----------------------------------------------------
+
+      # =====================================================
+      # VERIFY DEPLOYMENT
+      # =====================================================
       - name: Verify deployment
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
         run: |
-          Write-Host "=============================="
+
+          Write-Host "====================================="
           Write-Host "DEPLOYMENT VERIFICATION"
-          Write-Host "=============================="
+          Write-Host "====================================="
 
           Write-Host ""
-          Write-Host "Pods:"
+          Write-Host "PODS:"
           kubectl get pods -o wide
 
           Write-Host ""
-          Write-Host "Services:"
+          Write-Host "SERVICES:"
           kubectl get svc
+
+          Write-Host ""
+          Write-Host "DEPLOYMENTS:"
+          kubectl get deployments
 
           Write-Host ""
           Write-Host "HPA:"
           kubectl get hpa
 
           Write-Host ""
-          Write-Host "Deployments:"
-          kubectl get deployments
-
-          Write-Host ""
-          Write-Host "Helm:"
+          Write-Host "HELM:"
           helm list
 
           Write-Host ""
-          Write-Host "Finlyt deployment completed successfully!"
+          Write-Host "====================================="
+          Write-Host "FINLYT DEPLOYMENT SUCCESSFUL"
+          Write-Host "====================================="
