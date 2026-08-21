@@ -1,319 +1,549 @@
-<div align="center">
+# Finlyt
 
-# DevSecOps Banking Application
+## DevSecOps Banking Application
 
-A high-performance, containerized financial platform built with Spring Boot 3, Java 21, and integrated Contextual AI. This project implements a secure "DevSecOps Pipeline" using GitHub Actions, OIDC authentication, and AWS managed services.
+A containerized banking application built with Spring Boot and Java 21, deployed using Docker, Kubernetes, Helm, and an automated GitHub Actions CI/CD pipeline.
 
-[![Java Version](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-orange.svg)](.github/workflows/devsecops.yml)
-[![AWS OIDC](https://img.shields.io/badge/Security-OIDC-red.svg)](#phase-3-security-and-identity-configuration)
+## Overview
 
-</div>
+Finlyt demonstrates a complete development-to-deployment workflow:
 
-![dashboard](screenshots/1.png)
-
----
-
-## Technical Architecture
-
-The application is deployed across a multi-tier, segmented AWS environment. The control plane leverages GitHub Actions with integrated security gates at every stage.
-
-```mermaid
-graph TD
-    subgraph "External Control Plane"
-        GH[GitHub Actions]
-        User[User Browser]
-    end
-
-    subgraph "AWS Infrastructure (VPC)"
-        subgraph "Application Tier"
-            AppEC2[App EC2 - Ubuntu/Docker]
-            DB[(MySQL 8.0 Container)]
-        end
-
-        subgraph "Artificial Intelligence Tier"
-            Ollama[Ollama EC2 - AI Engine]
-        end
-
-        subgraph "Identity & Secrets"
-            Secrets[AWS Secrets Manager]
-            OIDC[IAM OIDC Provider]
-        end
-
-        subgraph "Registry"
-            ECR[Amazon ECR]
-        end
-    end
-
-    GH -->|1. OIDC Authentication| OIDC
-    GH -->|2. Push Scanned Image| ECR
-    GH -->|3. SSH Orchestration| AppEC2
-    GH -->|4. DAST Scan| AppEC2
-    
-    User -->|Port 8080| AppEC2
-    AppEC2 -->|JDBC Connection| DB
-    AppEC2 -->|REST Integration| Ollama
-    AppEC2 -->|Runtime Secrets| Secrets
-    AppEC2 -->|Pull Image| ECR
+```text
+Code
+  ↓
+GitHub
+  ↓
+GitHub Actions
+  ↓
+Build & Test
+  ↓
+Docker Image
+  ↓
+Trivy Security Scan
+  ↓
+Docker Hub
+  ↓
+Self-Hosted Windows Runner
+  ↓
+Kind Kubernetes Cluster
+  ↓
+Helm Deployment
+  ↓
+Kubernetes HPA
 ```
 
----
+The application and MySQL database run inside Kubernetes, while Helm manages the Kubernetes deployment.
 
-## Security Pipeline (DevSecOps Pipeline)
+## Architecture
 
-The CI/CD pipeline enforces **9 sequential security gates** before any code reaches production:
-
-| Gate | Name | Tool | Purpose |
-| :---: | :--- | :--- | :--- |
-| 1 | Secret Scan | Gitleaks | Scans entire Git history for leaked secrets |
-| 2 | Lint | Checkstyle | Enforces Java Google-Style coding standards |
-| 3 | SAST | Semgrep | Scans Java source code for security flaws and OWASP Top 10 |
-| 4 | SCA | OWASP Dependency Check (first time run can take more than 30+ minutes) | Scans Maven dependencies for known CVEs |
-| 5 | Build | Maven | Compiles and packages the application |
-| 6 | Container Scan | Trivy | Scans the Docker image for OS and library vulnerabilities |
-| 7 | Push | Amazon ECR | Pushes the image only after Trivy passes |
-| 8 | Deploy | SSH / Docker Compose | Automated deployment to AWS EC2 |
-| 9 | DAST | OWASP ZAP | Dynamic attack surface scanning on live app |
-
----
+```mermaid
+flowchart TD
+    Developer[Developer] --> GitHub[GitHub Repository]
+    GitHub --> Actions[GitHub Actions CI/CD]
+    Actions --> Build[Build & Test<br/>Maven + Java 21]
+    Build --> Docker[Docker Build]
+    Docker --> Trivy[Trivy Security Scan]
+    Trivy --> DockerHub[Docker Hub]
+    DockerHub --> Runner[Self-Hosted Windows Runner]
+    Runner --> Helm[Helm]
+    Helm --> Kind[Kind Kubernetes Cluster]
+    Kind --> App[Finlyt Deployment<br/>2-5 Replicas]
+    Kind --> MySQL[MySQL 8.0<br/>1 Replica]
+    Kind --> HPA[Horizontal Pod Autoscaler]
+    App --> Service[NodePort Service<br/>Port 30080]
+    App --> MySQL
+    HPA --> App
+```
 
 ## Technology Stack
 
-- **Backend Framework**: Java 21, Spring Boot 3.4.1
-- **Security Strategy**: Spring Security, IAM OIDC, Secrets Manager
-- **Persistence Layer**: MySQL 8.0 (Docker Container)
-- **AI Integration**: Ollama (TinyLlama)
-- **DevOps Tooling**: Docker, Docker Compose, GitHub Actions, AWS CLI, jq
-- **Infrastructure**: Amazon EC2, Amazon ECR, Amazon VPC
+### Application
 
----
+| Technology | Purpose |
+|---|---|
+| Java 21 | Programming language |
+| Spring Boot | Backend framework |
+| Spring Security | Application security |
+| Spring Data JPA | Database access |
+| MySQL 8.0 | Relational database |
+| Maven | Build and dependency management |
+| HTML/CSS/JavaScript | Frontend |
 
-## Implementation Phases
+### DevOps
 
-### Phase 1: AWS Infrastructure Initialization
+| Technology | Purpose |
+|---|---|
+| Git | Version control |
+| GitHub | Source code hosting |
+| GitHub Actions | CI/CD automation |
+| Docker | Containerization |
+| Docker Hub | Container image registry |
+| Trivy | Container vulnerability scanning |
+| Kubernetes | Container orchestration |
+| Kind | Local Kubernetes cluster |
+| Helm | Kubernetes package/deployment management |
+| HPA | Automatic application scaling |
 
-1. **Container Registry (ECR)**:
+## Project Structure
 
-   - Establish a private ECR repository named `devsecops-bankapp`.
+```text
+Finlyt/
+│
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml
+│
+├── helm/
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   ├── .helmignore
+│   └── templates/
+│       ├── deployment.yaml
+│       ├── service.yaml
+│       ├── mysql.yaml
+│       ├── hpa.yaml
+│       └── _helpers.tpl
+│
+├── k8s/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── mysql.yaml
+│   ├── hpa.yaml
+│   └── secret.yaml
+│
+├── screenshots/
+├── src/
+├── Dockerfile
+├── pom.xml
+├── mvnw
+├── mvnw.cmd
+├── .gitignore
+└── README.md
+```
 
-      ![ECR](screenshots/2.png)
+> `k8s/secret.yaml` is kept local and excluded from Git to avoid committing credentials.
 
-2. **Application Server (EC2)**:
+## Docker
 
-   - Deploy an Ubuntu 22.04 instance with below `User Data`.
+Build locally:
 
-      ```bash
-      #!/bin/bash
+```bash
+docker build -t guddu3447/finlyt:latest .
+```
 
-      sudo apt update 
-      sudo apt install -y docker.io docker-compose-v2 jq
-      sudo usermod -aG docker ubuntu
-      sudo newgrp docker
-      sudo snap install aws-cli --classic
-      ```
+Run:
 
-   - Configure Security Group to open inbound rule for Port 22 (Management) and Port 8080 (Service).
+```bash
+docker run -p 8080:8080 guddu3447/finlyt:latest
+```
 
-      > Better to give `name` to Security Group created.
+Docker image:
 
-   - Create an IAM Instance Profile(IAM EC2 role) containing permissions:
-     - `AmazonEC2ContainerRegistryPowerUser`
-     - `AWSSecretsManagerClientReadOnlyAccess`
+```text
+guddu3447/finlyt
+```
 
-        ![Permissions](screenshots/3.png)
+Images are tagged using both `latest` and the Git commit SHA.
 
-   - Attach it to Application EC2. Select EC2 -> Actions -> Security -> Modify IAM role -> Attach created IAM role.
+## Container Security
 
-      ![IAM role](screenshots/4.png)
-   
-   - Connect to EC2 Instance and Run below command to check whether IAM role is working or not.
+Trivy scans the Docker image for:
 
-      ```bash
-      aws sts get-caller-identity
-      ```
+```text
+CRITICAL
+HIGH
+```
 
-      You will get your account details with IAM role assumed.
+severity vulnerabilities.
 
-3. **AI Engine Tier (Ollama)**:
-   - Deploy a dedicated Ubuntu EC2 instance.
-   - Open Inbound Port `11434` from the Application EC2 Security Group.
+The current scan uses:
 
-      > Better to give `name` to Security Group created.
-    
-      ![ollama-sg](screenshots/8.png)
+```yaml
+ignore-unfixed: true
+exit-code: '0'
+```
 
-   - Automate initialization using the [ollama-setup.sh](scripts/ollama-setup.sh) script via EC2 User Data.
-    
-      ![user-data](screenshots/9.png)
+so vulnerabilities are reported without automatically blocking the pipeline.
 
-   - Verify the AI engine is responsive and the model is pulled in `AI engine EC2`:
+## Kubernetes
 
-     ```bash
-     ollama list
-     ```
+Finlyt runs on a local Kubernetes cluster created using Kind.
 
-      ![ollama-list](screenshots/21.png)
+Check context:
 
----
+```bash
+kubectl config current-context
+```
 
-### Phase 2: Security and Identity Configuration
+Expected:
 
-The deployment pipeline utilizes OpenID Connect (OIDC) for secure, keyless authentication between GitHub and AWS.
+```text
+kind-finlyt-cluster
+```
 
-1. **IAM Identity Provider**:
-   - Provider URL: `https://token.actions.githubusercontent.com`
-   - Audience: `sts.amazonaws.com`
+Check nodes:
 
-      ![identity-provider](screenshots/10.png)
+```bash
+kubectl get nodes
+```
 
-2. **Deployment Role**:
-   - Click on created `Identity provider`
-   - Asign & Create a role named `GitHubActionsRole`.
-   - Enter following details:
-      - `Identity provider`: Select created one.
-      - `Audience`: Select created one.
-      - `GitHub organization`: Your GitHub Username or Orgs Name where this repo is located.
-      - `GitHub repository`: Write the Repository name of this project. `(e.g, DevSecOps-Bankapp)`
-      - `GitHub branch`: branch to use for this project `(e.g, devsecops)`
-      - Click on `Next`
+Check pods:
 
-      ![role](screenshots/11.png)
+```bash
+kubectl get pods
+```
 
-   - Assign `AmazonEC2ContainerRegistryPowerUser` permissions.
+## Helm
 
-      ![iam permission](screenshots/12.png)
+Helm is used to package and deploy the Kubernetes resources.
 
-   - Click on `Next`, Enter name of role and click on `Create role`.
+```text
+helm/
+├── Chart.yaml
+├── values.yaml
+└── templates/
+    ├── deployment.yaml
+    ├── service.yaml
+    ├── mysql.yaml
+    ├── hpa.yaml
+    └── _helpers.tpl
+```
 
-      ![iam role](screenshots/13.png)
+Validate:
 
----
+```bash
+helm lint helm
+```
 
-### Phase 3: Secrets and Pipeline Configuration
+Render:
 
-#### 1. AWS Secrets Manager
-Create a secret named `bankapp/prod-secrets` in `Other type of secret` with the following key-value pairs:
+```bash
+helm template finlyt helm
+```
 
-| Secret Key | Description | Sample/Default Value |
-| :--- | :--- | :--- |
-| `DB_HOST` | The MySQL container service name | `db` |
-| `DB_PORT` | The database port | `3306` |
-| `DB_NAME` | The application database name | `bankappdb` |
-| `DB_USER` | The database username | `bankuser` |
-| `DB_PASSWORD` | The database password | `Test@123` |
-| `OLLAMA_URL` | The private URL for the AI tier | `http://<PRIVATE-IP>:11434` |
+Install or upgrade:
 
-![aws-ssm](screenshots/14.png)
+```bash
+helm upgrade --install finlyt helm
+```
 
-#### 2. GitHub Repository Secrets
-Configure the following Action Secrets within your GitHub repository settings:
+Check release:
 
-| Secret Name | Description |
-| :--- | :--- |
-| `AWS_ROLE_ARN` | The ARN of the `GitHubActionsRole` |
-| `AWS_REGION` | The AWS region where resources are deployed |
-| `AWS_ACCOUNT_ID` | Your 12-digit AWS account number |
-| `ECR_REPOSITORY` | The name of the ECR repository (`devsecops-bankapp`) |
-| `EC2_HOST` | The public IP address of the Application EC2 |
-| `EC2_USER` | The SSH username (default is `ubuntu`) |
-| `EC2_SSH_KEY` | The content of your private SSH key (`.pem` file) |
-| `NVD_API_KEY` | Free API key from [nvd.nist.gov](https://nvd.nist.gov/developers/request-an-api-key) for OWASP SCA scans |
+```bash
+helm list
+```
 
-> **Note**: The `NVD_API_KEY` raises the NVD API rate limit from ~5 requests/30s to 50 requests/30s, reducing the OWASP Dependency Check scan time from 30+ minutes to under 8 minutes. Without it the SCA job will time out.
+## Horizontal Pod Autoscaling
 
-#### Obtaining the NVD API Key
+Finlyt uses Kubernetes HPA.
 
-**Step 1: Request the API Key**
-- Go to [https://nvd.nist.gov/developers/request-an-api-key](https://nvd.nist.gov/developers/request-an-api-key).
-- Enter your `Organzation name`, `email address`, and select `organization type`.
-- Accept **Terms of Use** and Click **Submit**.
+```text
+Minimum replicas: 2
+Maximum replicas: 5
+CPU target: 70%
+```
 
-   ![request](screenshots/22.png)
+Check:
 
-**Step 2: Activate the API Key**
-- Check your email inbox for a message from `nvd-noreply@nist.gov`.
+```bash
+kubectl get hpa
+```
 
-   ![email](screenshots/25.png)
+## Kubernetes Services
 
-- Click the **activation link** in the email.
-- Enter `UUID` provided in email and Enter `Email` to activate
-- The link confirms your key and marks it as active.  
+Finlyt is exposed using a NodePort service.
 
-   ![api-activate](screenshots/23.png)
+```text
+Application Port: 8080
+NodePort: 30080
+```
 
-**Step 3: Get the API Key**
-- After clicking the activation link, the page will generate your API key.
-- Copy and save it securely.
+Check:
 
-   ![api-key](screenshots/24.png)
+```bash
+kubectl get svc
+```
 
-**Step 4: Add as GitHub Secret**
-- Go to your repository on GitHub.
-- Navigate to **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
-- Name: `NVD_API_KEY`
-- Value: Paste the copied API key.
-- Click **Add Secret**.
+The MySQL service remains internal:
 
-![github-secret](screenshots/15.png)
+```text
+finlyt-mysql:3306
+```
 
----
+## MySQL
 
-## Continuous Integration and Deployment
+MySQL 8.0 runs as a Kubernetes deployment.
 
-The DevSecOps lifecycle is orchestrated through the [DevSecOps Main Pipeline](.github/workflows/devsecops-main.yml), which securely sequences three modular workflows: [CI](.github/workflows/ci.yml), [Build](.github/workflows/build.yml), and [CD](.github/workflows/cd.yml). Together they enforce **9 sequential security gates** before any code reaches production. Every `git push` to the `main` or `devsecops` branch triggers the full pipeline automatically.
+```text
+Service: finlyt-mysql
+Database: bankappdb
+Port: 3306
+```
 
-| Gate | Job | Tool | Action |
-| :---: | :--- | :--- | :--- |
-| 1 | `gitleaks` | Gitleaks | **Strict**: Fails if any secrets are found in history. |
-| 2 | `lint` | Checkstyle | **Audit**: Reports style violations but doesn't block (Google Style). |
-| 3 | `sast` | Semgrep | **Strict**: Scans code for vulnerabilities. Fails on findings. |
-| 4 | `sca` | OWASP Dependency Check | **Strict**: Fails if any dependency has CVSS > 7.0. |
-| 5 | `build` | Maven | Standard build and test stage. |
-| 6 | `image_scan` | Trivy | **Strict**: Scans Docker image layers. Fails on any High/Critical CVE. |
-| 7 | `push_to_ecr` | Amazon ECR | Pushes the verified image to AWS ECR using OIDC. |
-| 8 | `deploy` | SSH / Docker Compose | Fetches secrets from AWS Secrets Manager and recreates the container. |
-| 9 | `dast` | OWASP ZAP | **Audit Mode**: Comprehensive scan that reports findings as artifacts, but does not block the pipeline. |
+Check:
 
-All scan reports (OWASP, Trivy, ZAP) are uploaded as downloadable **Artifacts** in each GitHub Actions run, YOu can look into the **Artifacts**.
+```bash
+kubectl get pods | findstr mysql
+kubectl get svc finlyt-mysql
+```
 
-- CI/CD
+A readiness probe checks whether MySQL is accepting connections before Kubernetes considers the pod ready.
 
-   ![github-actions](screenshots/16.png)
+## CI/CD Pipeline
 
-- Artifacts
+The workflow is defined in:
 
-   ![artifacts](screenshots/26.png)
-   
----
+```text
+.github/workflows/ci-cd.yml
+```
+
+### Continuous Integration
+
+Every push to `main` triggers:
+
+```text
+Checkout
+   ↓
+Java 21 Setup
+   ↓
+Maven Setup
+   ↓
+Build & Test
+   ↓
+Docker Build
+   ↓
+Trivy Security Scan
+   ↓
+Docker Hub Login
+   ↓
+Docker Image Push
+```
+
+### Continuous Deployment
+
+After CI succeeds:
+
+```text
+CI Job
+  ↓
+Self-Hosted Windows Runner
+  ↓
+Kubernetes Configuration
+  ↓
+kubectl Verification
+  ↓
+Helm Installation
+  ↓
+Helm Lint
+  ↓
+Helm Template
+  ↓
+Helm Upgrade/Install
+  ↓
+Rollout Verification
+  ↓
+Deployment Verification
+```
+
+The deployment runner uses:
+
+```text
+self-hosted
+Windows
+X64
+```
+
+The local Kind cluster is accessed using:
+
+```text
+C:\actions-runner\kubeconfig
+```
+
+## Self-Hosted GitHub Actions Runner
+
+Runner:
+
+```text
+finlyt-windows
+```
+
+Labels:
+
+```text
+self-hosted
+Windows
+X64
+```
+
+The runner is installed as a Windows service and starts automatically.
+
+The Kubernetes configuration is stored outside the Git repository:
+
+```text
+C:\actions-runner\kubeconfig
+```
+
+## Secrets
+
+Sensitive Kubernetes credentials are intentionally excluded from Git.
+
+Local secret file:
+
+```text
+k8s/secret.yaml
+```
+
+Example:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: finlyt-secret
+type: Opaque
+stringData:
+  MYSQL_ROOT_PASSWORD: <your-password>
+  MYSQL_PASSWORD: <your-password>
+```
+
+> Never commit real passwords, API keys, tokens, kubeconfig files, or private keys to Git.
+
+## Useful Commands
+
+### Pods
+
+```bash
+kubectl get pods
+kubectl get pods -w
+```
+
+### Deployments
+
+```bash
+kubectl get deployments
+kubectl rollout status deployment/finlyt
+```
+
+### Services
+
+```bash
+kubectl get svc
+```
+
+### HPA
+
+```bash
+kubectl get hpa
+```
+
+### Logs
+
+```bash
+kubectl logs deployment/finlyt
+kubectl logs deployment/finlyt-mysql
+```
+
+### Helm
+
+```bash
+helm list
+```
+
+### Resource Usage
+
+```bash
+kubectl top pods
+kubectl top nodes
+```
 
 ## Operational Verification
 
-- **Process Status**: `docker ps`
+After deployment, verify:
 
-  ![docker ps](screenshots/19.png)
+```bash
+kubectl get pods
+kubectl get deployments
+kubectl get svc
+kubectl get hpa
+helm list
+```
 
-- **Application Working**:
+Required pods should show:
 
-  ![app](screenshots/20.png)
+```text
+READY 1/1
+STATUS Running
+```
 
-- **Database Connectivity**: 
+Rollout should show:
 
-  ```bash
-  docker exec -it db mysql -u <USER> -p bankappdb -e "SELECT * FROM accounts;"
-  ```
+```text
+deployment "finlyt" successfully rolled out
+```
 
-  ![mysql-result](screenshots/17.png)
+## Screenshots
 
-  > **ZAP** is automatically created by **DAST - OWASP ZAP Baseline Scan** job in [cd.yml](.github/workflows/cd.yml). Read more about it(How, Why it does) on google...
+Project screenshots are available in:
 
-- **Network Validation**: 
+```text
+screenshots/
+```
 
-  ```bash
-  nc -zv <OLLAMA-PRIVATE-IP> 11434
-  ```
+## Key DevOps Concepts Demonstrated
 
-  ![ollama-success](screenshots/18.png)
+- Git-based development workflow
+- CI/CD automation
+- Maven build automation
+- Automated testing
+- Docker containerization
+- Container vulnerability scanning
+- Docker image versioning
+- Docker Hub image publishing
+- Kubernetes deployments
+- Kubernetes services
+- Kubernetes secrets
+- Kubernetes readiness probes
+- Horizontal Pod Autoscaling
+- Helm chart development
+- Helm-based deployment
+- Self-hosted GitHub Actions runners
+- Kind Kubernetes clusters
+- Deployment rollout verification
+- Kubernetes resource monitoring
+
+## Current Deployment
+
+| Component | Configuration |
+|---|---|
+| Application | Finlyt |
+| Backend | Spring Boot |
+| Java | 21 |
+| Database | MySQL 8.0 |
+| Container Registry | Docker Hub |
+| Container Security | Trivy |
+| Kubernetes | Kind |
+| Package Manager | Helm |
+| Application Replicas | 2 minimum |
+| Maximum Replicas | 5 |
+| HPA CPU Target | 70% |
+| Application Service | NodePort |
+| Application Port | 8080 |
+| NodePort | 30080 |
+| Database Service | ClusterIP |
+| Database Port | 3306 |
+| CI/CD | GitHub Actions |
+| CD Runner | Self-hosted Windows |
+
+## Author
+
+**Guddu Yadav**
+
+B.Tech Computer Science & Engineering
 
 ---
 
+<div align="center">
+
+### Built with Java • Spring Boot • Docker • Kubernetes • Helm • GitHub Actions
+
+</div>
