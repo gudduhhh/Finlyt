@@ -1,91 +1,114 @@
-# Finlyt
-
-## DevSecOps Banking Application
-
-A containerized banking application built with Spring Boot and Java 21, deployed using Docker, Kubernetes, Helm, and an automated GitHub Actions CI/CD pipeline.
-
-## Overview
-
-Finlyt demonstrates a complete development-to-deployment workflow:
-
-```text
-Code
-  ↓
-GitHub
-  ↓
-GitHub Actions
-  ↓
-Build & Test
-  ↓
-Docker Image
-  ↓
-Trivy Security Scan
-  ↓
-Docker Hub
-  ↓
-Self-Hosted Windows Runner
-  ↓
-Kind Kubernetes Cluster
-  ↓
-Helm Deployment
-  ↓
-Kubernetes HPA
-```
-
-The application and MySQL database run inside Kubernetes, while Helm manages the Kubernetes deployment.
-
-## Architecture
-
+<div align="center">
+Finlyt — DevSecOps Banking Application
+A secure, containerized banking application built with Spring Boot 3, Java 21, MySQL, Docker, Kubernetes, Helm, GitHub Actions, and Ollama/TinyLlama.
+This README documents the current Finlyt implementation. The repository also contains earlier AWS/DevSecOps work contributed by Samir Patel; those legacy AWS sections are intentionally not presented as the current implementation.
+![Java](https://img.shields.io/badge/Java-21-blue.svg)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3-brightgreen.svg)
+![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED.svg)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-Deployed-326CE5.svg)
+![Helm](https://img.shields.io/badge/Helm-Chart-0F1689.svg)
+![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-orange.svg)
+![Ollama](https://img.shields.io/badge/AI-Ollama-black.svg)
+</div>
+![Dashboard](screenshots/1.png)
+---
+Overview
+Finlyt is a Spring Boot based banking application with a DevSecOps-oriented deployment workflow.
+The current implementation focuses on:
+Banking accounts and balances
+Transactions
+Spring Security based authentication
+MySQL persistence
+Docker containerization
+Kubernetes deployment
+Helm packaging
+GitHub Actions CI/CD
+Self-hosted GitHub Actions runner on Windows
+Kubernetes Horizontal Pod Autoscaler (HPA)
+Kubernetes Metrics Server
+Ollama + TinyLlama AI integration
+Health monitoring through Spring Boot Actuator
+Secure database schema validation in deployed environments
+---
+Current Architecture
 ```mermaid
-flowchart TD
-    Developer[Developer] --> GitHub[GitHub Repository]
-    GitHub --> Actions[GitHub Actions CI/CD]
-    Actions --> Build[Build & Test<br/>Maven + Java 21]
-    Build --> Docker[Docker Build]
-    Docker --> Trivy[Trivy Security Scan]
-    Trivy --> DockerHub[Docker Hub]
-    DockerHub --> Runner[Self-Hosted Windows Runner]
-    Runner --> Helm[Helm]
-    Helm --> Kind[Kind Kubernetes Cluster]
-    Kind --> App[Finlyt Deployment<br/>2-5 Replicas]
-    Kind --> MySQL[MySQL 8.0<br/>1 Replica]
-    Kind --> HPA[Horizontal Pod Autoscaler]
-    App --> Service[NodePort Service<br/>Port 30080]
-    App --> MySQL
+graph TD
+    User[User Browser]
+
+    subgraph CI["CI/CD"]
+        GH[GitHub Actions]
+        Runner[Self-hosted Windows Runner]
+        Docker[Docker Image]
+    end
+
+    subgraph K8S["Kind Kubernetes Cluster"]
+        App[Finlyt Deployment]
+        HPA[HPA]
+        Metrics[Metrics Server]
+        MySQL[(MySQL)]
+    end
+
+    subgraph AI["AI"]
+        Ollama[Ollama]
+        Tiny[TinyLlama]
+    end
+
+    User --> App
+    GH --> Runner
+    Runner --> Docker
+    Runner --> K8S
     HPA --> App
+    Metrics --> HPA
+    App --> MySQL
+    App --> Ollama
+    Ollama --> Tiny
 ```
-
-## Technology Stack
-
-### Application
-
-| Technology | Purpose |
-|---|---|
-| Java 21 | Programming language |
-| Spring Boot | Backend framework |
-| Spring Security | Application security |
-| Spring Data JPA | Database access |
-| MySQL 8.0 | Relational database |
-| Maven | Build and dependency management |
-| HTML/CSS/JavaScript | Frontend |
-
-### DevOps
-
-| Technology | Purpose |
-|---|---|
-| Git | Version control |
-| GitHub | Source code hosting |
-| GitHub Actions | CI/CD automation |
-| Docker | Containerization |
-| Docker Hub | Container image registry |
-| Trivy | Container vulnerability scanning |
-| Kubernetes | Container orchestration |
-| Kind | Local Kubernetes cluster |
-| Helm | Kubernetes package/deployment management |
-| HPA | Automatic application scaling |
-
-## Project Structure
-
+---
+Technology Stack
+Layer	Technology
+Backend	Java 21, Spring Boot 3
+Security	Spring Security
+Database	MySQL
+ORM	Spring Data JPA / Hibernate
+AI	Ollama + TinyLlama
+Containerization	Docker
+Orchestration	Kubernetes
+Local Cluster	Kind
+Packaging	Helm
+CI/CD	GitHub Actions
+Runner	Self-hosted Windows GitHub Actions Runner
+Autoscaling	Kubernetes HPA
+Metrics	Kubernetes Metrics Server
+Monitoring Endpoint	Spring Boot Actuator
+Build	Maven
+---
+Application Features
+Authentication
+Finlyt provides account-based authentication using Spring Security.
+User registration
+Login
+Protected application pages
+User-specific account information
+Role-based `ROLE_USER` authority
+Banking Operations
+The application supports core banking operations such as:
+Account creation
+Balance management
+Deposits
+Withdrawals
+Transaction records
+Transaction history
+Transactions are linked to their corresponding account using JPA relationships.
+AI Integration
+Finlyt integrates with Ollama and the `tinyllama` model.
+Current configuration:
+```properties
+ollama.url=${OLLAMA_URL:http://localhost:11434}
+ollama.model=tinyllama
+```
+The AI functionality is exposed through the application's chat functionality.
+---
+Project Structure
 ```text
 Finlyt/
 │
@@ -96,454 +119,366 @@ Finlyt/
 ├── helm/
 │   ├── Chart.yaml
 │   ├── values.yaml
-│   ├── .helmignore
+│   ├── charts/
 │   └── templates/
 │       ├── deployment.yaml
-│       ├── service.yaml
-│       ├── mysql.yaml
 │       ├── hpa.yaml
+│       ├── mysql.yaml
+│       ├── service.yaml
 │       └── _helpers.tpl
 │
 ├── k8s/
 │   ├── deployment.yaml
-│   ├── service.yaml
-│   ├── mysql.yaml
 │   ├── hpa.yaml
-│   └── secret.yaml
+│   ├── mysql.yaml
+│   ├── secret.yaml
+│   └── service.yaml
 │
 ├── screenshots/
+│   ├── 1.png
+│   ├── 2.png
+│   ├── ...
+│   └── 26.png
+│
 ├── src/
+│   ├── main/
+│   │   ├── java/com/example/bankapp/
+│   │   │   ├── config/
+│   │   │   ├── controller/
+│   │   │   ├── model/
+│   │   │   ├── repository/
+│   │   │   └── service/
+│   │   └── resources/
+│   │       ├── static/
+│   │       └── templates/
+│   └── test/
+│
 ├── Dockerfile
 ├── pom.xml
-├── mvnw
-├── mvnw.cmd
-├── .gitignore
 └── README.md
 ```
-
-> `k8s/secret.yaml` is kept local and excluded from Git to avoid committing credentials.
-
-## Docker
-
+---
+Docker
+The application is packaged as a Docker image and deployed as a container.
 Build locally:
-
 ```bash
-docker build -t guddu3447/finlyt:latest .
+docker build -t finlyt:latest .
 ```
-
-Run:
-
+Run locally:
 ```bash
-docker run -p 8080:8080 guddu3447/finlyt:latest
+docker run -p 8080:8080 finlyt:latest
 ```
-
-Docker image:
-
-```text
-guddu3447/finlyt
-```
-
-Images are tagged using both `latest` and the Git commit SHA.
-
-## Container Security
-
-Trivy scans the Docker image for:
-
-```text
-CRITICAL
-HIGH
-```
-
-severity vulnerabilities.
-
-The current scan uses:
-
-```yaml
-ignore-unfixed: true
-exit-code: '0'
-```
-
-so vulnerabilities are reported without automatically blocking the pipeline.
-
-## Kubernetes
-
-Finlyt runs on a local Kubernetes cluster created using Kind.
-
-Check context:
-
-```bash
-kubectl config current-context
-```
-
-Expected:
-
+The CI/CD workflow builds the application image before deployment.
+---
+Kubernetes Deployment
+The current application is deployed to a Kubernetes cluster created using Kind.
+Cluster:
 ```text
 kind-finlyt-cluster
 ```
-
-Check nodes:
-
+Application deployment:
+```text
+finlyt
+```
+MySQL deployment:
+```text
+finlyt-mysql
+```
+Useful commands:
 ```bash
 kubectl get nodes
-```
-
-Check pods:
-
-```bash
 kubectl get pods
+kubectl get deployments
+kubectl get services
 ```
-
-## Helm
-
-Helm is used to package and deploy the Kubernetes resources.
-
+Expected application state:
+```text
+finlyt-xxxxx       1/1   Running
+finlyt-xxxxx       1/1   Running
+finlyt-mysql-xxxxx 1/1   Running
+```
+---
+Kubernetes Configuration
+The repository contains Kubernetes manifests under:
+```text
+k8s/
+```
+`deployment.yaml` — application deployment
+`service.yaml` — application service
+`mysql.yaml` — MySQL deployment
+`secret.yaml` — Kubernetes secrets
+`hpa.yaml` — autoscaling configuration
+---
+Helm
+Finlyt also contains a Helm chart for Kubernetes deployment:
 ```text
 helm/
 ├── Chart.yaml
 ├── values.yaml
 └── templates/
     ├── deployment.yaml
-    ├── service.yaml
-    ├── mysql.yaml
     ├── hpa.yaml
+    ├── mysql.yaml
+    ├── service.yaml
     └── _helpers.tpl
 ```
-
-Validate:
-
+Install:
 ```bash
-helm lint helm
+helm install finlyt ./helm
 ```
-
-Render:
-
+Upgrade:
 ```bash
-helm template finlyt helm
+helm upgrade finlyt ./helm
 ```
-
-Install or upgrade:
-
-```bash
-helm upgrade --install finlyt helm
-```
-
-Check release:
-
+Check:
 ```bash
 helm list
 ```
-
-## Horizontal Pod Autoscaling
-
-Finlyt uses Kubernetes HPA.
-
+---
+Horizontal Pod Autoscaling
+Finlyt uses Kubernetes HPA to automatically adjust application replicas based on CPU utilization.
+Current configuration:
 ```text
 Minimum replicas: 2
 Maximum replicas: 5
-CPU target: 70%
+Target CPU:       70%
 ```
-
-Check:
-
+Check HPA:
 ```bash
 kubectl get hpa
 ```
-
-## Kubernetes Services
-
-Finlyt is exposed using a NodePort service.
-
+A verified working state was:
 ```text
-Application Port: 8080
-NodePort: 30080
+finlyt-hpa   Deployment/finlyt   cpu: 3%/70%   2   5   2
 ```
-
+This means Kubernetes keeps at least two Finlyt pods running and can scale the deployment up to five replicas when CPU utilization increases.
+---
+Metrics Server
+The HPA depends on Kubernetes resource metrics.
+Metrics Server is deployed in the cluster and provides CPU and memory information.
 Check:
-
 ```bash
-kubectl get svc
+kubectl get pods -n kube-system | findstr metrics-server
 ```
-
-The MySQL service remains internal:
-
-```text
-finlyt-mysql:3306
-```
-
-## MySQL
-
-MySQL 8.0 runs as a Kubernetes deployment.
-
-```text
-Service: finlyt-mysql
-Database: bankappdb
-Port: 3306
-```
-
-Check:
-
+Check node metrics:
 ```bash
-kubectl get pods | findstr mysql
-kubectl get svc finlyt-mysql
+kubectl top nodes
 ```
-
-A readiness probe checks whether MySQL is accepting connections before Kubernetes considers the pod ready.
-
-## CI/CD Pipeline
-
-The workflow is defined in:
-
+Check pod metrics:
+```bash
+kubectl top pods
+```
+Verified example:
+```text
+NAME                            CPU(cores)   MEMORY(bytes)
+finlyt-xxxxx                    3m           220Mi
+finlyt-xxxxx                    4m           222Mi
+finlyt-mysql-xxxxx              42m          431Mi
+```
+---
+CI/CD Pipeline
+The GitHub Actions workflow is located at:
 ```text
 .github/workflows/ci-cd.yml
 ```
-
-### Continuous Integration
-
-Every push to `main` triggers:
-
+The pipeline automates the application build and deployment workflow.
+High-level flow:
 ```text
-Checkout
+Git Push
    ↓
-Java 21 Setup
+GitHub Actions
    ↓
-Maven Setup
+Build & Verify
    ↓
-Build & Test
+Docker Image
    ↓
-Docker Build
+Kubernetes Deployment
    ↓
-Trivy Security Scan
+Finlyt Pods
    ↓
-Docker Hub Login
-   ↓
-Docker Image Push
+HPA
 ```
-
-### Continuous Deployment
-
-After CI succeeds:
-
+The workflow uses the self-hosted Windows runner for the Kubernetes deployment stage.
+---
+Self-Hosted GitHub Actions Runner
+The project uses a self-hosted GitHub Actions runner on Windows.
+The runner is configured to access the Kind Kubernetes cluster through a dedicated kubeconfig:
 ```text
-CI Job
-  ↓
-Self-Hosted Windows Runner
-  ↓
-Kubernetes Configuration
-  ↓
-kubectl Verification
-  ↓
-Helm Installation
-  ↓
-Helm Lint
-  ↓
-Helm Template
-  ↓
-Helm Upgrade/Install
-  ↓
-Rollout Verification
-  ↓
-Deployment Verification
+C:	ctions-runner\kubeconfig
 ```
-
-The deployment runner uses:
-
+The kubeconfig is configured for:
 ```text
-self-hosted
-Windows
-X64
+kind-finlyt-cluster
 ```
-
-The local Kind cluster is accessed using:
-
+Verification:
+```powershell
+kubectl --kubeconfig C:\actions-runner\kubeconfig config current-context
+```
+Expected:
 ```text
-C:\actions-runner\kubeconfig
+kind-finlyt-cluster
 ```
-
-## Self-Hosted GitHub Actions Runner
-
-Runner:
-
+The runner service is managed through Windows Services.
+---
+Database
+Finlyt uses MySQL with the database:
 ```text
-finlyt-windows
+bankappdb
 ```
-
-Labels:
-
+The current database contains the main application tables:
 ```text
-self-hosted
-Windows
-X64
+accounts
+transactions
 ```
-
-The runner is installed as a Windows service and starts automatically.
-
-The Kubernetes configuration is stored outside the Git repository:
-
+Accounts
+The `accounts` table stores:
+ID
+Username
+Password
+Balance
+Transactions
+The `transactions` table stores:
+ID
+Amount
+Type
+Timestamp
+Account relationship
+The relationship is:
 ```text
-C:\actions-runner\kubeconfig
+Account 1 ──────── * Transactions
 ```
-
-## Secrets
-
-Sensitive Kubernetes credentials are intentionally excluded from Git.
-
-Local secret file:
-
+---
+Database Schema Validation
+The deployed application uses:
+```properties
+spring.jpa.hibernate.ddl-auto=validate
+```
+This ensures Hibernate validates the existing database schema instead of automatically changing the deployed schema.
+For CI tests using a fresh MySQL database, the workflow can use:
 ```text
-k8s/secret.yaml
+SPRING_JPA_HIBERNATE_DDL_AUTO=update
 ```
+This keeps the deployed environment stricter while allowing the CI test database to initialize automatically.
+---
+Application Configuration
+Important configuration is externalized through environment variables.
+```properties
+spring.datasource.url=jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:bankappdb}
+spring.datasource.username=${MYSQL_USER:root}
+spring.datasource.password=${MYSQL_PASSWORD:Test@123}
 
-Example:
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: finlyt-secret
-type: Opaque
-stringData:
-  MYSQL_ROOT_PASSWORD: <your-password>
-  MYSQL_PASSWORD: <your-password>
+ollama.url=${OLLAMA_URL:http://localhost:11434}
+ollama.model=tinyllama
 ```
-
-> Never commit real passwords, API keys, tokens, kubeconfig files, or private keys to Git.
-
-## Useful Commands
-
-### Pods
-
+For real deployments, credentials should be supplied through Kubernetes Secrets or another secure secret-management mechanism rather than committed credentials.
+---
+Actuator
+Only the health endpoint is exposed:
+```properties
+management.endpoints.web.exposure.include=health
+management.endpoint.health.show-details=when-authorized
+```
+This keeps the exposed Actuator surface intentionally limited.
+---
+Verification
+Check application pods
 ```bash
 kubectl get pods
-kubectl get pods -w
 ```
-
-### Deployments
-
+Check deployment
 ```bash
-kubectl get deployments
-kubectl rollout status deployment/finlyt
+kubectl get deployment finlyt
 ```
-
-### Services
-
-```bash
-kubectl get svc
-```
-
-### HPA
-
+Check HPA
 ```bash
 kubectl get hpa
 ```
-
-### Logs
-
+Check metrics
+```bash
+kubectl top nodes
+kubectl top pods
+```
+Check application logs
 ```bash
 kubectl logs deployment/finlyt
-kubectl logs deployment/finlyt-mysql
 ```
-
-### Helm
-
+Check MySQL
 ```bash
-helm list
+kubectl get pods | findstr mysql
 ```
-
-### Resource Usage
-
+---
+Useful Kubernetes Commands
+Restart application:
 ```bash
-kubectl top pods
-kubectl top nodes
+kubectl rollout restart deployment/finlyt
 ```
-
-## Operational Verification
-
-After deployment, verify:
-
+Check rollout:
 ```bash
-kubectl get pods
-kubectl get deployments
-kubectl get svc
-kubectl get hpa
-helm list
+kubectl rollout status deployment/finlyt
 ```
-
-Required pods should show:
-
-```text
-READY 1/1
-STATUS Running
+Check service:
+```bash
+kubectl get service
 ```
-
-Rollout should show:
-
-```text
-deployment "finlyt" successfully rolled out
+Port-forward the application:
+```bash
+kubectl port-forward service/finlyt 8080:8080
 ```
-
-## Screenshots
-
-Project screenshots are available in:
-
+Check current image:
+```bash
+kubectl get deployment finlyt -o jsonpath="{.spec.template.spec.containers[0].image}"
+```
+Check image pull policy:
+```bash
+kubectl get deployment finlyt -o jsonpath="{.spec.template.spec.containers[0].imagePullPolicy}"
+```
+---
+Screenshots & Documentation
+The repository contains screenshots from different stages of the project's development under:
 ```text
 screenshots/
 ```
-
-## Key DevOps Concepts Demonstrated
-
-- Git-based development workflow
-- CI/CD automation
-- Maven build automation
-- Automated testing
-- Docker containerization
-- Container vulnerability scanning
-- Docker image versioning
-- Docker Hub image publishing
-- Kubernetes deployments
-- Kubernetes services
-- Kubernetes secrets
-- Kubernetes readiness probes
-- Horizontal Pod Autoscaling
-- Helm chart development
-- Helm-based deployment
-- Self-hosted GitHub Actions runners
-- Kind Kubernetes clusters
-- Deployment rollout verification
-- Kubernetes resource monitoring
-
-## Current Deployment
-
-| Component | Configuration |
-|---|---|
-| Application | Finlyt |
-| Backend | Spring Boot |
-| Java | 21 |
-| Database | MySQL 8.0 |
-| Container Registry | Docker Hub |
-| Container Security | Trivy |
-| Kubernetes | Kind |
-| Package Manager | Helm |
-| Application Replicas | 2 minimum |
-| Maximum Replicas | 5 |
-| HPA CPU Target | 70% |
-| Application Service | NodePort |
-| Application Port | 8080 |
-| NodePort | 30080 |
-| Database Service | ClusterIP |
-| Database Port | 3306 |
-| CI/CD | GitHub Actions |
-| CD Runner | Self-hosted Windows |
-
-## Author
-
-**Guddu Yadav**
-
-B.Tech Computer Science & Engineering
-
+Useful application, CI/CD, database, and deployment screenshots can be referenced from this directory.
+Older AWS-specific screenshots and implementation details from the previous project phase are intentionally not used as the primary documentation for the current Kubernetes-based implementation.
 ---
-
+Contribution & Project History
+This repository contains work from multiple stages of the project.
+The earlier version included AWS-based infrastructure and DevSecOps implementation such as AWS EC2, ECR, OIDC, Secrets Manager, and Docker Compose deployment.
+Those earlier components were developed with help from Samir Patel and are part of the project's history.
+The current Finlyt work documented above focuses on the newer implementation and improvements around:
+Kubernetes
+Kind
+Helm
+HPA
+Metrics Server
+GitHub Actions
+Self-hosted runner
+Kubernetes-based MySQL
+Ollama/TinyLlama
+Application configuration
+CI/CD deployment
+This README therefore distinguishes the earlier AWS implementation from the current project state rather than attributing all historical work to a single author.
+---
+Future Improvements
+Potential future improvements include:
+Production Kubernetes cluster deployment
+HTTPS/TLS configuration
+External secret management
+Better observability and dashboards
+Prometheus and Grafana integration
+More comprehensive automated tests
+Improved AI capabilities
+Resource-based autoscaling
+Production-grade database persistence and backups
+---
+Credits
+Current Development
+Guddu Yadav
+Earlier Project Contributions
+Samir Patel
+Special thanks for the guidance and contributions that helped develop the earlier AWS/DevSecOps implementation.
+---
 <div align="center">
-
-### Built with Java • Spring Boot • Docker • Kubernetes • Helm • GitHub Actions
-
+Finlyt
+Spring Boot • Docker • Kubernetes • Helm • GitHub Actions • MySQL • Ollama
 </div>
