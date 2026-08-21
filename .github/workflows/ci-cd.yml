@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
@@ -17,12 +18,12 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: Test@123
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
           MYSQL_DATABASE: bankappdb
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pTest@123"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -p${{ secrets.MYSQL_ROOT_PASSWORD }}"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -49,7 +50,7 @@ jobs:
           MYSQL_PORT: 3306
           MYSQL_DATABASE: bankappdb
           MYSQL_USER: root
-          MYSQL_PASSWORD: Test@123
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
         run: mvn clean verify
 
       - name: Build Docker image
