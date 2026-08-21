@@ -59,6 +59,11 @@ jobs:
           MYSQL_DATABASE: bankappdb
           MYSQL_USER: root
           MYSQL_PASSWORD: Test@123
+
+          # CI uses a fresh MySQL database.
+          # Allow Hibernate to create/update tables for tests.
+          SPRING_JPA_HIBERNATE_DDL_AUTO: update
+
         run: mvn clean verify
 
       - name: Build Docker image
@@ -116,6 +121,7 @@ jobs:
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
+
         run: |
           Write-Host "====================================="
           Write-Host "KUBERNETES CONFIGURATION"
@@ -141,6 +147,7 @@ jobs:
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
+
         run: |
           Write-Host "====================================="
           Write-Host "CHECKING KUBERNETES"
@@ -162,10 +169,11 @@ jobs:
 
 
       # =====================================================
-      # INSTALL HELM MANUALLY
+      # INSTALL HELM
       # =====================================================
       - name: Install Helm
         shell: powershell
+
         run: |
 
           $helmVersion = "v3.18.4"
@@ -259,6 +267,7 @@ jobs:
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
+
         run: |
 
           Write-Host "====================================="
@@ -283,6 +292,7 @@ jobs:
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
+
         run: |
 
           Write-Host "====================================="
@@ -304,6 +314,7 @@ jobs:
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
+
         run: |
 
           Write-Host "====================================="
@@ -322,6 +333,7 @@ jobs:
         shell: powershell
         env:
           KUBECONFIG: C:\actions-runner\kubeconfig
+
         run: |
 
           Write-Host "====================================="
