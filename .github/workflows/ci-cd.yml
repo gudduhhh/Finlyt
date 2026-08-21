@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-test:
-    name: Build and Test
+    name: Build, Test and Security Scan
     runs-on: ubuntu-latest
 
     services:
@@ -51,3 +51,15 @@ jobs:
           MYSQL_USER: root
           MYSQL_PASSWORD: Test@123
         run: mvn clean verify
+
+      - name: Build Docker image
+        run: docker build -t guddu3447/finlyt:${{ github.sha }} .
+
+      - name: Run Trivy security scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: guddu3447/finlyt:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
